@@ -32,7 +32,7 @@ void print_usage()
     printf("  -o <file>       Output executable name\n");
     printf("  --emit-c        Keep generated C file (out.c)\n");
     printf("  --freestanding  Freestanding mode (no stdlib)\n");
-    printf("  --cc <compiler> C compiler to use (gcc, clang, tcc)\n");
+    printf("  --cc <compiler> C compiler to use (gcc, clang, tcc, zig)\n");
     printf("  -O<level>       Optimization level\n");
     printf("  -g              Debug info\n");
     printf("  -v, --verbose   Verbose output\n");
@@ -131,7 +131,16 @@ int main(int argc, char **argv)
         {
             if (i + 1 < argc)
             {
-                strcpy(g_config.cc, argv[++i]);
+                char *cc_arg = argv[++i];
+                // Handle "zig" shorthand for "zig cc"
+                if (strcmp(cc_arg, "zig") == 0)
+                {
+                    strcpy(g_config.cc, "zig cc");
+                }
+                else
+                {
+                    strcpy(g_config.cc, cc_arg);
+                }
             }
         }
         else if (strcmp(arg, "-o") == 0)

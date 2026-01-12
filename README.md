@@ -443,6 +443,7 @@ Zen C is designed to work with most C11 compilers. Some features rely on GNU C e
 
 ```bash
 zc run app.zc --cc clang
+zc run app.zc --cc zig
 ```
 
 ### Test Suite Status
@@ -451,9 +452,22 @@ zc run app.zc --cc clang
 |:---|:---:|:---|:---|
 | **GCC** | **100%** | All Features | None. |
 | **Clang** | **100%** | All Features | None. |
+| **Zig** | **100%** | All Features | None. Uses `zig cc` as a drop-in C compiler. |
 | **TCC** | **~70%** | Basic Syntax, Generics, Traits | No `__auto_type`, No Intel ASM, No Nested Functions. |
 
-> **Recommendation:** Use **GCC** or **Clang** for production builds. TCC is excellent for rapid prototyping due to its compilation speed but misses some advanced C extensions Zen C relies on for full feature support.
+> **Recommendation:** Use **GCC**, **Clang**, or **Zig** for production builds. TCC is excellent for rapid prototyping due to its compilation speed but misses some advanced C extensions Zen C relies on for full feature support.
+
+### Building with Zig
+
+Zig's `zig cc` command provides a drop-in replacement for GCC/Clang with excellent cross-compilation support. To use Zig:
+
+```bash
+# Compile and run a Zen C program with Zig
+zc run app.zc --cc zig
+
+# Build the Zen C compiler itself with Zig
+make zig
+```
 
 ---
 
@@ -482,6 +496,8 @@ make test
 
 # Run with different compiler
 ./tests/run_tests.sh --cc clang
+./tests/run_tests.sh --cc zig
+./tests/run_tests.sh --cc tcc
 ```
 
 ### Extending the Compiler
