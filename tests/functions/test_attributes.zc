@@ -69,8 +69,10 @@ fn complex_calc(x: int) -> int {
     return x * 2;
 }
 
+#if defined(__linux__)
 @section(".custom_section")
 fn section_func() {}
+#endif
 
 @weak
 fn weak_func() {}
