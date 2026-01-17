@@ -100,6 +100,7 @@ clean:
 # Test
 test: $(TARGET)
 	./tests/run_tests.sh
+	./tests/run_codegen_tests.sh
 
 # Build with alternative compilers
 zig:
