@@ -122,7 +122,8 @@ typedef enum
     NODE_TRY,
     NODE_REFLECTION,
     NODE_AWAIT,
-    NODE_REPL_PRINT
+    NODE_REPL_PRINT,
+    NODE_CUDA_LAUNCH
 } NodeType;
 
 // ** AST Node Structure **
@@ -176,6 +177,10 @@ struct ASTNode
             char *section;   // @section("name")
             int is_async;    // async function
             int is_comptime; // @comptime function
+            // CUDA qualifiers
+            int cuda_global; // @global -> __global__
+            int cuda_device; // @device -> __device__
+            int cuda_host;   // @host -> __host__
         } func;
 
         struct
@@ -539,6 +544,15 @@ struct ASTNode
         {
             ASTNode *expr;
         } repl_print;
+
+        struct
+        {
+            ASTNode *call;       // The kernel call (NODE_EXPR_CALL)
+            ASTNode *grid;       // Grid dimensions expression
+            ASTNode *block;      // Block dimensions expression
+            ASTNode *shared_mem; // Optional shared memory size (NULL = default)
+            ASTNode *stream;     // Optional CUDA stream (NULL = default)
+        } cuda_launch;
     };
 };
 

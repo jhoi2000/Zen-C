@@ -182,6 +182,7 @@ typedef struct
     int is_freestanding; // 1 if --freestanding.
     int mode_transpile;  // 1 if 'transpile' command.
     int use_cpp;         // 1 if --cpp (emit C++ compatible code).
+    int use_cuda;        // 1 if --cuda (emit CUDA-compatible code).
 
     // GCC Flags accumulator.
     char gcc_flags[4096];

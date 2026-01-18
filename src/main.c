@@ -48,6 +48,7 @@ void print_usage()
     printf("  -q, --quiet     Quiet output\n");
     printf("  -c              Compile only (produce .o)\n");
     printf("  --cpp           Use C++ mode.\n");
+    printf("  --cuda          Use CUDA mode (requires nvcc).\n");
 }
 
 int main(int argc, char **argv)
@@ -146,6 +147,12 @@ int main(int argc, char **argv)
         {
             strcpy(g_config.cc, "g++");
             g_config.use_cpp = 1;
+        }
+        else if (strcmp(arg, "--cuda") == 0)
+        {
+            strcpy(g_config.cc, "nvcc");
+            g_config.use_cuda = 1;
+            g_config.use_cpp = 1; // CUDA implies C++ mode
         }
         else if (strcmp(arg, "--check") == 0)
         {

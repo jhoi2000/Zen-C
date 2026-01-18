@@ -2252,6 +2252,70 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
             fprintf(out, ";\n");
         }
         break;
+    case NODE_CUDA_LAUNCH:
+    {
+        // Emit CUDA kernel launch: kernel<<<grid, block, shared, stream>>>(args);
+        ASTNode *call = node->cuda_launch.call;
+
+        // Get kernel name from callee
+        if (call->call.callee->type == NODE_EXPR_VAR)
+        {
+            fprintf(out, "    %s<<<", call->call.callee->var_ref.name);
+        }
+        else
+        {
+            fprintf(out, "    ");
+            codegen_expression(ctx, call->call.callee, out);
+            fprintf(out, "<<<");
+        }
+
+        // Grid dimension
+        codegen_expression(ctx, node->cuda_launch.grid, out);
+        fprintf(out, ", ");
+
+        // Block dimension
+        codegen_expression(ctx, node->cuda_launch.block, out);
+
+        // Optional shared memory size
+        if (node->cuda_launch.shared_mem || node->cuda_launch.stream)
+        {
+            fprintf(out, ", ");
+            if (node->cuda_launch.shared_mem)
+            {
+                codegen_expression(ctx, node->cuda_launch.shared_mem, out);
+            }
+            else
+            {
+                fprintf(out, "0");
+            }
+        }
+
+        // Optional CUDA stream
+        if (node->cuda_launch.stream)
+        {
+            fprintf(out, ", ");
+            codegen_expression(ctx, node->cuda_launch.stream, out);
+        }
+
+        fprintf(out, ">>>(");
+
+        // Arguments
+        ASTNode *arg = call->call.args;
+        int first = 1;
+        while (arg)
+        {
+            if (!first)
+            {
+                fprintf(out, ", ");
+            }
+            codegen_expression(ctx, arg, out);
+            first = 0;
+            arg = arg->next;
+        }
+
+        fprintf(out, ");\n");
+        break;
+    }
     default:
         codegen_expression(ctx, node, out);
         fprintf(out, ";\n");

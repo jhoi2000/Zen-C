@@ -53,6 +53,10 @@ Join the discussion, share demos, ask questions, or report bugs in the official 
     - [14. Inline Assembly](#14-inline-assembly)
     - [15. Build Directives](#15-build-directives)
 - [Compiler Support & Compatibility](#compiler-support--compatibility)
+    - [Test Suite Status](#test-suite-status)
+    - [Building with Zig](#building-with-zig)
+    - [C++ Interop](#c-interop)
+    - [CUDA Interop](#cuda-interop)
 - [Contributing](#contributing)
 
 ---
@@ -678,6 +682,92 @@ fn main() {
 ```
 
 > **Note:** The `--cpp` flag switches the backend to `g++` and emits C++-compatible code (uses `auto` instead of `__auto_type`, function overloads instead of `_Generic`, and explicit casts for `void*`).
+
+### CUDA Interop
+
+Zen C can generate CUDA-compatible code with the `--cuda` flag, allowing you to write GPU kernels using Zen C syntax.
+
+```bash
+# Direct compilation with nvcc
+zc run app.zc --cuda
+
+# Or transpile for manual build
+zc transpile app.zc --cuda -o app.cu
+nvcc app.cu -o app
+```
+
+#### CUDA-Specific Attributes
+
+| Attribute | CUDA Equivalent | Description |
+|:---|:---|:---|
+| `@global` | `__global__` | Kernel function (runs on GPU, called from host) |
+| `@device` | `__device__` | Device function (runs on GPU, called from GPU) |
+| `@host` | `__host__` | Host function (explicit CPU-only) |
+
+#### Kernel Launch Syntax
+
+Zen C provides a clean `launch` statement for invoking CUDA kernels:
+
+```zc
+launch kernel_name(args) with {
+    grid: num_blocks,
+    block: threads_per_block,
+    shared_mem: 1024,  // Optional
+    stream: my_stream   // Optional
+};
+```
+
+This transpiles to: `kernel_name<<<grid, block, shared, stream>>>(args);`
+
+#### Writing CUDA Kernels
+
+Use Zen C function syntax with `@global` and the `launch` statement:
+
+```zc
+include <cuda_runtime.h>
+import "std/cuda.zc"
+
+@global
+fn add_kernel(a: float*, b: float*, c: float*, n: int) {
+    // You can use raw CUDA C or the std/cuda.zc helpers
+    var i = thread_id();
+    if i < n {
+        c[i] = a[i] + b[i];
+    }
+}
+
+fn main() {
+    // ... allocation ...
+    launch add_kernel(d_a, d_b, d_c, N) with {
+        grid: num_blocks,
+        block: 256
+    };
+    // ... cleanup ...
+}
+```
+
+#### Standard Library (`std/cuda.zc`)
+Zen C provides a standard library for common CUDA operations to reduce `raw` blocks:
+
+```zc
+import "std/cuda.zc"
+
+// Memory management
+var d_ptr = cuda_alloc<float>(1024);
+cuda_copy_to_device(d_ptr, h_ptr, 1024 * sizeof(float));
+defer cuda_free(d_ptr);
+
+// Synchronization
+cuda_sync();
+
+// Thread Indexing (use inside kernels)
+var i = thread_id(); // Global index
+var bid = block_id();
+var tid = local_id();
+```
+
+
+> **Note:** The `--cuda` flag sets `nvcc` as the compiler and implies `--cpp` mode. Requires the NVIDIA CUDA Toolkit.
 
 ---
 

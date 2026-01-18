@@ -535,6 +535,23 @@ void emit_func_signature(FILE *out, ASTNode *func, const char *name_override)
         return;
     }
 
+    // Emit CUDA qualifiers (for both forward declarations and definitions)
+    if (g_config.use_cuda)
+    {
+        if (func->func.cuda_global)
+        {
+            fprintf(out, "__global__ ");
+        }
+        if (func->func.cuda_device)
+        {
+            fprintf(out, "__device__ ");
+        }
+        if (func->func.cuda_host)
+        {
+            fprintf(out, "__host__ ");
+        }
+    }
+
     // Return type
     char *ret_str;
     if (func->func.ret_type_info)

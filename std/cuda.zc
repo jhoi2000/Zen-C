@@ -1,0 +1,113 @@
+
+include <cuda_runtime.h>
+
+// Memory Management
+
+/// Allocate device memory for n elements of type T.
+fn cuda_alloc<T>(n: usize) -> T* {
+    var ptr: T* = NULL;
+    cudaMalloc((void**)&ptr, n * sizeof(T));
+    return ptr;
+}
+
+/// Free device memory.
+fn cuda_free(ptr: void*) {
+    cudaFree(ptr);
+}
+
+/// Copy bytes from host to device.
+fn cuda_copy_to_device(dst: void*, src: void*, bytes: usize) {
+    cudaMemcpy(dst, src, bytes, cudaMemcpyHostToDevice);
+}
+
+/// Copy bytes from device to host.
+fn cuda_copy_to_host(dst: void*, src: void*, bytes: usize) {
+    cudaMemcpy(dst, src, bytes, cudaMemcpyDeviceToHost);
+}
+
+/// Copy bytes between device buffers.
+fn cuda_copy_device(dst: void*, src: void*, bytes: usize) {
+    cudaMemcpy(dst, src, bytes, cudaMemcpyDeviceToDevice);
+}
+
+/// Set device memory to zero.
+fn cuda_zero(ptr: void*, bytes: usize) {
+    cudaMemset(ptr, 0, bytes);
+}
+
+// Synchronization
+
+/// Synchronize the device (wait for all kernels to complete).
+fn cuda_sync() {
+    cudaDeviceSynchronize();
+}
+
+// Thread Indexing (for use inside @global/@device functions)
+
+/// Get 1D global thread index (blockIdx.x * blockDim.x + threadIdx.x).
+@device @inline
+fn thread_id() -> int {
+    var id: int;
+    id = blockIdx.x * blockDim.x + threadIdx.x;
+    return id;
+}
+
+/// Get 1D block index.
+@device @inline
+fn block_id() -> int {
+    var id: int;
+    id = blockIdx.x;
+    return id;
+}
+
+/// Get 1D thread index within block.
+@device @inline
+fn local_id() -> int {
+    var id: int;
+    id = threadIdx.x;
+    return id;
+}
+
+/// Get block size (number of threads per block).
+@device @inline
+fn block_size() -> int {
+    var size: int;
+    size = blockDim.x;
+    return size;
+}
+
+/// Get grid size (number of blocks).
+@device @inline
+fn grid_size() -> int {
+    var size: int;
+    size = gridDim.x;
+    return size;
+}
+
+// Device Info
+
+/// Get the number of CUDA devices.
+fn cuda_device_count() -> int {
+    var count: int = 0;
+    cudaGetDeviceCount(&count);
+    return count;
+}
+
+/// Set the active CUDA device.
+fn cuda_set_device(id: int) {
+    cudaSetDevice(id);
+}
+
+// Error Handling
+
+/// Get the last CUDA error code.
+fn cuda_last_error() -> int {
+    var err: int;
+    err = (int)cudaGetLastError();
+    return err;
+}
+
+/// Check if last CUDA operation succeeded.
+fn cuda_ok() -> bool {
+    return cuda_last_error() == 0;
+}

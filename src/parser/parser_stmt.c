@@ -2503,6 +2503,117 @@ ASTNode *parse_statement(ParserContext *ctx, Lexer *l)
             return parse_guard(ctx, l);
         }
 
+        // CUDA launch: launch kernel(args) with { grid: X, block: Y };
+        if (strncmp(tk.start, "launch", 6) == 0 && tk.len == 6)
+        {
+            Token launch_tok = lexer_next(l); // eat 'launch'
+
+            // Parse the kernel call expression
+            ASTNode *call = parse_expression(ctx, l);
+            if (!call || call->type != NODE_EXPR_CALL)
+            {
+                zpanic_at(launch_tok, "Expected kernel call after 'launch'");
+            }
+
+            // Expect 'with'
+            Token with_tok = lexer_peek(l);
+            if (with_tok.type != TOK_IDENT || strncmp(with_tok.start, "with", 4) != 0 ||
+                with_tok.len != 4)
+            {
+                zpanic_at(with_tok, "Expected 'with' after kernel call in launch statement");
+            }
+            lexer_next(l); // eat 'with'
+
+            // Expect '{' for configuration block
+            if (lexer_peek(l).type != TOK_LBRACE)
+            {
+                zpanic_at(lexer_peek(l), "Expected '{' after 'with' in launch statement");
+            }
+            lexer_next(l); // eat '{'
+
+            ASTNode *grid = NULL;
+            ASTNode *block = NULL;
+            ASTNode *shared_mem = NULL;
+            ASTNode *stream = NULL;
+
+            // Parse configuration fields
+            while (lexer_peek(l).type != TOK_RBRACE && lexer_peek(l).type != TOK_EOF)
+            {
+                Token field_name = lexer_next(l);
+                if (field_name.type != TOK_IDENT)
+                {
+                    zpanic_at(field_name, "Expected field name in launch configuration");
+                }
+
+                // Expect ':'
+                if (lexer_peek(l).type != TOK_COLON)
+                {
+                    zpanic_at(lexer_peek(l), "Expected ':' after field name");
+                }
+                lexer_next(l); // eat ':'
+
+                // Parse value expression
+                ASTNode *value = parse_expression(ctx, l);
+
+                // Assign to appropriate field
+                if (strncmp(field_name.start, "grid", 4) == 0 && field_name.len == 4)
+                {
+                    grid = value;
+                }
+                else if (strncmp(field_name.start, "block", 5) == 0 && field_name.len == 5)
+                {
+                    block = value;
+                }
+                else if (strncmp(field_name.start, "shared_mem", 10) == 0 && field_name.len == 10)
+                {
+                    shared_mem = value;
+                }
+                else if (strncmp(field_name.start, "stream", 6) == 0 && field_name.len == 6)
+                {
+                    stream = value;
+                }
+                else
+                {
+                    zpanic_at(field_name, "Unknown launch configuration field (expected: grid, "
+                                          "block, shared_mem, stream)");
+                }
+
+                // Optional comma
+                if (lexer_peek(l).type == TOK_COMMA)
+                {
+                    lexer_next(l);
+                }
+            }
+
+            // Expect '}'
+            if (lexer_peek(l).type != TOK_RBRACE)
+            {
+                zpanic_at(lexer_peek(l), "Expected '}' to close launch configuration");
+            }
+            lexer_next(l); // eat '}'
+
+            // Expect ';'
+            if (lexer_peek(l).type == TOK_SEMICOLON)
+            {
+                lexer_next(l);
+            }
+
+            // Require at least grid and block
+            if (!grid || !block)
+            {
+                zpanic_at(launch_tok, "Launch configuration requires at least 'grid' and 'block'");
+            }
+
+            ASTNode *n = ast_create(NODE_CUDA_LAUNCH);
+            n->cuda_launch.call = call;
+            n->cuda_launch.grid = grid;
+            n->cuda_launch.block = block;
+            n->cuda_launch.shared_mem = shared_mem;
+            n->cuda_launch.stream = stream;
+            n->token = launch_tok;
+            return n;
+        }
+
         // Do-while loop: do { body } while condition;
         if (strncmp(tk.start, "do", 2) == 0 && tk.len == 2)
         {
