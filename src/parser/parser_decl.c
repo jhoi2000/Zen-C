@@ -532,7 +532,23 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
         {
             if (init->type_info)
             {
-                type_obj = init->type_info;
+                // Create new type to avoid inheriting is_const from builtins like true/false
+                type_obj = type_new(init->type_info->kind);
+                if (init->type_info->name)
+                {
+                    type_obj->name = xstrdup(init->type_info->name);
+                }
+                if (init->type_info->inner)
+                {
+                    type_obj->inner = init->type_info->inner; // Shallow copy for inner
+                }
+                // Copy function type args for lambda/closure support
+                if (init->type_info->args && init->type_info->arg_count > 0)
+                {
+                    type_obj->args = init->type_info->args;
+                    type_obj->arg_count = init->type_info->arg_count;
+                    type_obj->is_varargs = init->type_info->is_varargs;
+                }
                 type = type_to_string(type_obj);
             }
             else if (init->type == NODE_EXPR_SLICE)

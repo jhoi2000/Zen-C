@@ -4769,6 +4769,10 @@ ASTNode *parse_arrow_lambda_single(ParserContext *ctx, Lexer *l, char *param_nam
     t->arg_count = 1;
     lambda->type_info = t;
 
+    // Register parameter in scope for body parsing
+    enter_scope(ctx);
+    add_symbol(ctx, param_name, "int", type_new(TYPE_INT));
+
     // Body parsing...
     ASTNode *body_block = NULL;
     if (lexer_peek(l).type == TOK_LBRACE)
@@ -4789,6 +4793,7 @@ ASTNode *parse_arrow_lambda_single(ParserContext *ctx, Lexer *l, char *param_nam
     lambda->lambda.is_expression = 1;
     register_lambda(ctx, lambda);
     analyze_lambda_captures(ctx, lambda);
+    exit_scope(ctx);
     return lambda;
 }
 
@@ -4812,6 +4817,13 @@ ASTNode *parse_arrow_lambda_multi(ParserContext *ctx, Lexer *l, char **param_nam
     }
     lambda->type_info = t;
 
+    // Register parameters in scope for body parsing
+    enter_scope(ctx);
+    for (int i = 0; i < num_params; i++)
+    {
+        add_symbol(ctx, param_names[i], "int", type_new(TYPE_INT));
+    }
+
     // Body parsing...
     ASTNode *body_block = NULL;
     if (lexer_peek(l).type == TOK_LBRACE)
@@ -4832,5 +4844,6 @@ ASTNode *parse_arrow_lambda_multi(ParserContext *ctx, Lexer *l, char **param_nam
     lambda->lambda.is_expression = 1;
     register_lambda(ctx, lambda);
     analyze_lambda_captures(ctx, lambda);
+    exit_scope(ctx);
     return lambda;
 }
