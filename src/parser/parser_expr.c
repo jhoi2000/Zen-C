@@ -1,11 +1,23 @@
-
 #include "../zen/zen_facts.h"
 #include "parser.h"
 #include <ctype.h>
+#include <libgen.h>
 #include <stdio.h>
 
 #include <stdlib.h>
 #include <string.h>
+
+extern ASTNode *global_user_structs;
+
+// Helper to check if a type is a struct type
+int is_struct_type(ParserContext *ctx, const char *type_name)
+{
+    if (!type_name)
+    {
+        return 0;
+    }
+    return find_struct_def(ctx, type_name) != NULL;
+}
 
 Type *get_field_type(ParserContext *ctx, Type *struct_type, const char *field_name);
 
@@ -1700,7 +1712,54 @@ ASTNode *parse_primary(ParserContext *ctx, Lexer *l)
 
             if (fi.type == TOK_RBRACE)
             {
-                is_struct_init = 1;
+                // Empty struct init often conflicts with block start (e.g. if x == y {})
+                // We allow it only if we verify 'acc' is a struct name.
+                if (find_struct_def(ctx, acc))
+                {
+                    is_struct_init = 1;
+                }
+                else
+                {
+                    // Fallback: Check if it's a generic instantiation (e.g. Optional_T)
+                    // We check if 'acc' starts with any known struct name followed by '_'
+                    StructRef *sr = ctx->parsed_structs_list;
+                    while (sr)
+                    {
+                        if (sr->node && sr->node->type == NODE_STRUCT)
+                        {
+                            size_t len = strlen(sr->node->strct.name);
+                            if (strncmp(acc, sr->node->strct.name, len) == 0 && acc[len] == '_')
+                            {
+                                is_struct_init = 1;
+                                break;
+                            }
+                        }
+                        sr = sr->next;
+                    }
+
+                    if (!is_struct_init && global_user_structs)
+                    {
+                        ASTNode *gn = global_user_structs;
+                        while (gn)
+                        {
+                            if (gn->type == NODE_STRUCT)
+                            {
+                                size_t len = strlen(gn->strct.name);
+                                if (strncmp(acc, gn->strct.name, len) == 0 && acc[len] == '_')
+                                {
+                                    is_struct_init = 1;
+                                    break;
+                                }
+                            }
+                            gn = gn->next;
+                        }
+                    }
+
+                    if (!is_struct_init)
+                    {
+                        is_struct_init = 0;
+                    }
+                }
             }
             else if (fi.type == TOK_IDENT)
             {
@@ -2010,7 +2069,28 @@ ASTNode *parse_primary(ParserContext *ctx, Lexer *l)
                 Type *async_type = type_new(TYPE_STRUCT);
                 async_type->name = xstrdup("Async");
                 node->type_info = async_type;
-                node->resolved_type = xstrdup("Async");
+
+                if (sig->ret_type)
+                {
+                    char *inner = type_to_string(sig->ret_type);
+                    if (inner)
+                    {
+                        char buf[512];
+                        snprintf(buf, 511, "Async<%s>", inner);
+                        node->resolved_type = xstrdup(buf);
+                        async_type->name = xstrdup(buf); // HACK: Persist generic info in name
+                        free(inner);
+                    }
+                    else
+                    {
+                        node->resolved_type = xstrdup("Async");
+                    }
+                }
+                else
+                {
+                    node->resolved_type = xstrdup("Async");
+                }
+                node->type_info = async_type;
             }
             else if (sig->ret_type)
             {
@@ -4423,6 +4503,22 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                         sig->arg_types[1]->kind == TYPE_POINTER)
                     {
                         Type *rt = rhs->type_info;
+
+                        // If rhs is a variable reference without type_info, look it up
+                        if (!rt && rhs->type == NODE_EXPR_VAR)
+                        {
+                            Symbol *sym = find_symbol_entry(ctx, rhs->var_ref.name);
+                            if (sym && sym->type_info)
+                            {
+                                rt = sym->type_info;
+                                rhs->type_info = rt;
+                                if (sym->type_name)
+                                {
+                                    rhs->resolved_type = xstrdup(sym->type_name);
+                                }
+                            }
+                        }
+
                         int is_rhs_ptr = (rt && rt->kind == TYPE_POINTER);
                         if (!is_rhs_ptr) // Need pointer, have value
                         {
