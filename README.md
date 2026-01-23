@@ -48,6 +48,7 @@ Join the discussion, share demos, ask questions, or report bugs in the official 
         - [Type Aliases](#type-aliases)
     - [4. Functions & Lambdas](#4-functions--lambdas)
         - [Functions](#functions)
+        - [Const Arguments](#const-arguments)
         - [Default Arguments](#default-arguments)
         - [Lambdas (Closures)](#lambdas-closures)
         - [Variadic Functions](#variadic-functions)
@@ -256,8 +257,17 @@ fn add(a: int, b: int) -> int {
 
 // Named arguments supported in calls
 add(a: 10, b: 20);
+```
 
 > **Note**: Named arguments must strictly follow the defined parameter order. `add(b: 20, a: 10)` is invalid.
+
+#### Const Arguments
+Function arguments can be marked as `const` to enforce read-only semantics.
+```zc
+fn print_val(v: const int) {
+    // v = 10; // Error: Cannot assign to const variable
+    println "{v}";
+}
 ```
 
 #### Default Arguments

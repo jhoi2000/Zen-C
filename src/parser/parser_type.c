@@ -713,11 +713,20 @@ Type *parse_type_base(ParserContext *ctx, Lexer *l)
 Type *parse_type_formal(ParserContext *ctx, Lexer *l)
 {
     int is_restrict = 0;
-    if (lexer_peek(l).type == TOK_IDENT && lexer_peek(l).len == 8 &&
-        strncmp(lexer_peek(l).start, "restrict", 8) == 0)
+    int is_const = 0;
+
+    if (lexer_peek(l).type == TOK_IDENT)
     {
-        lexer_next(l); // eat restrict
-        is_restrict = 1;
+        if (lexer_peek(l).len == 8 && strncmp(lexer_peek(l).start, "restrict", 8) == 0)
+        {
+            lexer_next(l); // eat restrict
+            is_restrict = 1;
+        }
+        else if (lexer_peek(l).len == 5 && strncmp(lexer_peek(l).start, "const", 5) == 0)
+        {
+            lexer_next(l); // eat const
+            is_const = 1;
+        }
     }
 
     // Example: fn(int, int) -> int
@@ -828,6 +837,10 @@ Type *parse_type_formal(ParserContext *ctx, Lexer *l)
     if (is_restrict)
     {
         t->is_restrict = 1;
+    }
+    if (is_const)
+    {
+        t->is_const = 1;
     }
     return t;
 }
